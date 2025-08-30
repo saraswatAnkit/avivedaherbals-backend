@@ -3,5 +3,5 @@ from .models import User
 
 @admin.register(User)      # decorator way of registering
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'email', 'mobile_number', 'address', 'created_at')
-    search_fields = ('name', 'email', 'mobile_number')
+    list_display = ('id', 'name', 'email', 'created_at')
+    search_fields = ('name', 'email')

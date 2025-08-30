@@ -38,9 +38,7 @@ class UserLoginView(APIView):
                     "user": {
                         "id": user.id,
                         "name": user.name,
-                        "email": user.email,
-                        "mobile_number": user.mobile_number,
-                        "address": user.address
+                        "email": user.email
                     }
                 },
                 status=status.HTTP_200_OK

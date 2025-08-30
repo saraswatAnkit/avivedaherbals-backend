@@ -7,7 +7,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'name', 'email', 'password', 'mobile_number', 'address']
+        fields = ['id', 'name', 'email', 'password']
+
+        extra_kwargs = {
+            'password': {'write_only': True}  # don’t return password in API response
+        }
     
     def create(self, validated_data):
         validated_data['password'] = make_password(validated_data['password'])
@@ -17,7 +21,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class UserLoginSerializer(serializers.Serializer):
     # Not tied to model directly (because login only needs email + password input)
     email = serializers.EmailField()
-    password = serializers.CharField()
+    password = serializers.CharField(write_only=True)
 
     def validate(self, data):
         email = data.get('email')
@@ -26,11 +30,11 @@ class UserLoginSerializer(serializers.Serializer):
         try:
             user = User.objects.get(email=email)  # Find user by email
         except User.DoesNotExist:
-            raise serializers.ValidationError("Invalid email or password")
+            raise serializers.ValidationError({"error": "Invalid email or password"})
 
         if not check_password(password, user.password):  
             # Compare entered password with hashed one in DB
-            raise serializers.ValidationError("Invalid email or password")
+            raise serializers.ValidationError({"error": "Invalid email or password"})
 
         data['user'] = user  # Attach user object for later use
         return data

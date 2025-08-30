@@ -23,7 +23,7 @@ class UserRegistrationView(APIView):
             )
         
         # If invalid, return errors (like "email already exists")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors.get('email')[0], status=status.HTTP_400_BAD_REQUEST)
 
 class UserLoginView(APIView):
     def post(self, request):

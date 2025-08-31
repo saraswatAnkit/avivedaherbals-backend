@@ -4,6 +4,7 @@ from rest_framework.views import APIView    # DRF class for making custom API en
 from rest_framework.response import Response  # To send JSON responses
 from rest_framework import status            # For HTTP status codes
 from .serializers import UserRegistrationSerializer, UserLoginSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 
 def test(request):
     return JsonResponse({"message": "Accounts API working!"})
@@ -31,6 +32,10 @@ class UserLoginView(APIView):
 
         if serializer.is_valid():
             user = serializer.validated_data['user']  # Retrieved from validate()
+
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+
             return Response(
                 {
                     "Status" : 1,
@@ -39,6 +44,10 @@ class UserLoginView(APIView):
                         "id": user.id,
                         "name": user.name,
                         "email": user.email
+                    },
+                    "token": {
+                        "refresh": str(refresh),
+                        "access": str(refresh.access_token),
                     }
                 },
                 status=status.HTTP_200_OK

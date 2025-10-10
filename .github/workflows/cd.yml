@@ -1,0 +1,114 @@
+name: CD - Deploy Django to EC2
+
+on:
+  workflow_run:
+    workflows: ["CI - Build & Test Django"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2
+        id: deploy
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "Creating .env file..."
+            cat > /home/ubuntu/avivedaherbals/.env << EOF
+            # For Docker MySQL
+            MYSQL_ROOT_PASSWORD=${{ secrets.DB_PASSWORD }}
+            MYSQL_DATABASE=${{ secrets.DB_NAME }}
+            MYSQL_USER=${{ secrets.DB_USER }}
+            MYSQL_PASSWORD=${{ secrets.DB_PASSWORD }}
+
+            # For Django Backend
+            DB_ENGINE=mysql
+            DB_NAME=${{ secrets.DB_NAME }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_HOST=mysql
+            DB_PORT=3306
+            SECRET_KEY='${{ secrets.DJANGO_SECRET_KEY }}'
+            DEBUG=False
+            ALLOWED_HOSTS=*
+            EOF
+
+            echo "Pulling latest code..."
+            cd /home/ubuntu/avivedaherbals || git clone git@github.com:saraswatAnkit/avivedaherbals-backend.git /home/ubuntu/avivedaherbals && cd /home/ubuntu/avivedaherbals
+
+            git fetch origin
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+
+            echo "Starting Docker Compose..."
+            docker compose down
+            docker compose up -d --build
+            docker exec avivedaherbals-django python manage.py migrate --noinput
+            docker exec avivedaherbals-django python manage.py collectstatic --noinput
+
+  notify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Send Deployment Success Email
+        if: ${{ needs.deploy.result == 'success' }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USER }}
+          password: ${{ secrets.EMAIL_PASS }}
+          subject: "Deployment Successful - Aviveda Herbals"
+          to: ${{ secrets.NOTIFICATION_EMAILS }}
+          from: ${{ secrets.EMAIL_USER }}
+          body: |
+            Hi,
+
+            Deployment to production EC2 completed successfully!
+
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Commit Message: ${{ github.event.head_commit.message }}
+            Repository: ${{ github.repository }}
+
+            EC2: ${{ secrets.EC2_HOST }}
+
+            Regards,
+            Hassle Free Enterprise
+
+      - name: Send Deployment Failure Email
+        if: ${{ needs.deploy.result == 'failure' }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USER }}
+          password: ${{ secrets.EMAIL_PASS }}
+          subject: "Deployment Failed - Aviveda Herbals"
+          to: ${{ secrets.NOTIFICATION_EMAILS }}
+          from: ${{ secrets.EMAIL_USER }}
+          body: |
+            Hi,
+
+            Deployment to production EC2 failed!
+
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Commit Message: ${{ github.event.head_commit.message }}
+            Repository: ${{ github.repository }}
+
+            Please check the GitHub Actions logs for details.
+
+            Regards,
+            Hassle Free Enterprise

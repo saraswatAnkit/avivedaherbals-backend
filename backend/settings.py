@@ -145,8 +145,11 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost").split(",")
-CORS_ALLOWED_ORIGINS = [f"http://{host.strip()}" for host in ALLOWED_HOSTS]
+ALLOWED_HOSTS = ["avivedaherbals.com", "backend.avivedaherbals.com"]
+CORS_ALLOWED_ORIGINS = [
+    "https://avivedaherbals.com",
+    "https://www.avivedaherbals.com",
+]
 
 
 REST_FRAMEWORK = {
